@@ -1,0 +1,14 @@
+#!/bin/sh
+# Copy stdin to the system clipboard, or with -o print the clipboard to stdout.
+# Resolves whatever the platform provides: macOS pbcopy, Wayland wl-copy, X11 xclip.
+if [ "${1:-}" = "-o" ]; then
+  command -v pbpaste >/dev/null 2>&1 && exec pbpaste
+  command -v wl-paste >/dev/null 2>&1 && exec wl-paste --no-newline
+  command -v xclip >/dev/null 2>&1 && exec xclip -selection clipboard -o
+else
+  command -v pbcopy >/dev/null 2>&1 && exec pbcopy
+  command -v wl-copy >/dev/null 2>&1 && exec wl-copy
+  command -v xclip >/dev/null 2>&1 && exec xclip -selection clipboard
+fi
+echo "clip: no clipboard tool found (tried pbcopy/pbpaste, wl-copy/wl-paste, xclip)" >&2
+exit 1

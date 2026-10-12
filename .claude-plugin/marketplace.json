@@ -1,0 +1,17 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "clip-handoff",
+  "description": "Clipboard command handoff protocol for Claude Code: slots, bare ready-to-run commands, and output captured straight back.",
+  "owner": {
+    "name": "Matthew Lawrence Klein",
+    "url": "https://github.com/matthewlawrenceklein"
+  },
+  "plugins": [
+    {
+      "name": "clip-handoff",
+      "description": "Commands you must run yourself arrive on your clipboard, not as text to select by hand: numbered slots for multi-step work, and output captured back for the agent to read.",
+      "source": "./",
+      "category": "productivity"
+    }
+  ]
+}

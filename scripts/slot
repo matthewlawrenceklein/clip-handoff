@@ -1,0 +1,39 @@
+#!/bin/sh
+# Clipboard "slots" so several commands can be queued and loaded one hotkey at a time.
+#   printf '%s\n' 'cmd' | slot set 1     store text in slot 1 (the agent does this)
+#   slot copy 1                          put slot 1 on the clipboard (kitty hotkey ctrl+alt+1)
+#   slot show | slot clear
+DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+D="${XDG_STATE_HOME:-$HOME/.local/state}/clip-slots"
+mkdir -p "$D"
+
+# Desktop toast if the platform has one; never fatal if it doesn't.
+notify() {
+  if command -v notify-send >/dev/null 2>&1; then
+    notify-send -t 1800 "$1" "$2"
+  elif command -v terminal-notifier >/dev/null 2>&1; then
+    terminal-notifier -title "$1" -message "$2"
+  elif command -v osascript >/dev/null 2>&1; then
+    osascript -e "display notification \"$2\" with title \"$1\""
+  fi
+}
+
+case "${1:-}" in
+  set)
+    [ -n "${2:-}" ] || { echo "usage: slot set N   (text on stdin)" >&2; exit 2; }
+    cat > "$D/$2" ;;
+  copy)
+    f="$D/${2:?usage: slot copy N}"
+    if [ ! -s "$f" ]; then notify "slot $2 is empty" "" 2>/dev/null; exit 1; fi
+    "$DIR/clip" < "$f" || exit 1
+    # Strip quotes and backslashes from the preview: it is interpolated into an
+    # AppleScript string on macOS, where they would break the notification.
+    preview=$(head -n1 "$f" | cut -c1-70 | tr -d '"\\')
+    notify "slot $2 on clipboard" "$preview  [$(wc -l < "$f") line(s)]" 2>/dev/null || true ;;
+  show)
+    for f in "$D"/*; do [ -s "$f" ] || continue; printf '== slot %s ==\n' "$(basename "$f")"; cat "$f"; done ;;
+  clear)
+    rm -f "$D"/* ;;
+  *)
+    echo "usage: slot set N | slot copy N | slot show | slot clear" >&2; exit 2 ;;
+esac

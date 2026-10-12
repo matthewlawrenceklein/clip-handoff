@@ -1,0 +1,6 @@
+{
+  "name": "clip-handoff",
+  "version": "0.1.0",
+  "description": "Commands you must run yourself arrive on your clipboard, not as text to select by hand: numbered slots for multi-step work, and output captured back for the agent to read.",
+  "hooks": "./hooks/hooks.json"
+}

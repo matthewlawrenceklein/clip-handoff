@@ -1,0 +1,67 @@
+#!/bin/sh
+# SessionStart hook: hand the agent the command-handoff protocol with this
+# machine's absolute paths and native clipboard tool already filled in.
+#
+# Deliberately POSIX sh with no interpreter dependency: a hook written in node
+# or python breaks on machines where those resolve to an unpinned version
+# manager shim, and the error names the shim, not this plugin.
+DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd) || exit 0
+SRC=$(CDPATH= cd -- "$DIR/../scripts" && pwd) || exit 0
+
+# The plugin lives at a version-numbered path that changes on every update, so
+# nothing durable may point into it. /slot-setup copies the helpers to a stable
+# directory and records it here.
+MARK="${XDG_STATE_HOME:-$HOME/.local/state}/clip-handoff/bindir"
+BIN=''
+[ -r "$MARK" ] && BIN=$(cat "$MARK" 2>/dev/null)
+[ -n "$BIN" ] || BIN="$HOME/.local/bin"
+
+notes=''
+if [ -x "$BIN/clip" ] && [ -x "$BIN/slot" ]; then
+  if ! cmp -s "$SRC/clip" "$BIN/clip" || ! cmp -s "$SRC/slot" "$BIN/slot"; then
+    notes="$notes
+NOTE: the installed helpers in $BIN differ from the ones shipped with this
+version of the plugin, so the plugin was probably updated since setup. They
+still work; mention once that /slot-setup will refresh them."
+  fi
+else
+  BIN="$SRC"
+  notes="$notes
+NOTE: the helpers are not installed to a stable path yet, so the paths above
+point inside the plugin, which is version-numbered and changes on every update.
+Use them for clipboard work now, but never write one into a config file or a
+hotkey — tell the user to run /slot-setup for that."
+fi
+
+# The short, native command to use inside commands handed to the user.
+if command -v pbcopy >/dev/null 2>&1; then COPY=pbcopy
+elif command -v wl-copy >/dev/null 2>&1; then COPY=wl-copy
+elif command -v xclip >/dev/null 2>&1; then COPY='xclip -selection clipboard'
+else
+  COPY="$BIN/clip"
+  notes="$notes
+NOTE: no clipboard tool found on this machine (looked for pbcopy, wl-copy,
+xclip). Clipboard handoff will fail until one is installed; give commands in the
+reply as usual and say why."
+fi
+
+# Slot hotkeys live in terminal config, which a plugin cannot install.
+if ! grep -rqs 'slot copy' "$HOME/.config/kitty" "$HOME/Library/Preferences/kitty" 2>/dev/null; then
+  notes="$notes
+NOTE: no slot hotkeys found in the terminal config. Single clipboard blocks work
+now; slots will not be loadable by hotkey until the user runs /slot-setup. If a
+task needs slots before then, mention it once."
+fi
+
+# Emit stdin as a JSON string literal. sed handles the character escapes
+# (awk replacement-string escaping differs between awk implementations), awk
+# joins the lines with the two-character \n escape.
+json_string() {
+  printf '"'
+  sed -e 's/\\/\\\\/g' -e 's/"/\\"/g' | awk '{printf "%s%s", (NR>1 ? "\\n" : ""), $0}'
+  printf '"'
+}
+
+printf '{"hookSpecificOutput":{"hookEventName":"SessionStart","additionalContext":'
+{ sed -e "s|@@BIN@@|$BIN|g" -e "s|@@COPY@@|$COPY|g" "$DIR/protocol.md"; printf '%s\n' "$notes"; } | json_string
+printf '}}'
