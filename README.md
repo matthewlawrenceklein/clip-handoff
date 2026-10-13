@@ -1,9 +1,10 @@
 # clip-handoff
 
 A Claude Code plugin for the commands the agent *can't* run for you — sudo, a
-password prompt, a GUI, another machine. Instead of printing them for you to
-select by hand, the agent puts them on your clipboard, and when it needs to see
-the output, hands you a command that copies its own output back.
+password prompt, a GUI, console queries, sessions on another machine. Instead
+of printing them for you to select by hand, the agent puts them on your
+clipboard, and when it needs to see the output, hands you a command that copies
+its own output back.
 
 Three pieces:
 
